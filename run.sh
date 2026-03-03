@@ -1,5 +1,5 @@
 #!/bin/bash
-# DSAE - Run Script
+# VibeFinQuant - Run Script
 # Starts backend (port 9001) and frontend (port 5173)
 
 set -e
@@ -16,7 +16,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 echo "=============================="
-echo "  DSAE - Starting App"
+echo "  VibeFinQuant - Starting App"
 echo "=============================="
 
 # --- Start Backend ---

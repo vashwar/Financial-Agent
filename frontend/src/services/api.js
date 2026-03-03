@@ -79,6 +79,36 @@ export const processTranscript = (transcript) => {
 }
 
 /**
+ * Search for tickers by company name or symbol
+ * @param {string} query - Search query (e.g., 'Apple' or 'AAPL')
+ * @returns {Promise} Response with matching suggestions
+ */
+export const searchTickers = (query) => {
+  return apiClient.get('/api/search', {
+    params: { q: query },
+    timeout: 5000,
+  })
+}
+
+/**
+ * Analyze an ETF ticker
+ * @param {string} ticker - ETF ticker symbol (e.g., 'SPY')
+ * @returns {Promise} Response with ETF analysis data
+ */
+export const analyzeETF = (ticker) => {
+  return apiClient.post('/api/analyze-etf', {
+    ticker: ticker.toUpperCase(),
+  }, {
+    params: { _t: Date.now() },
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    },
+  })
+}
+
+/**
  * Check API health
  * @returns {Promise} Health status
  */

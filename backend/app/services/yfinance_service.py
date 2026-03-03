@@ -261,6 +261,80 @@ class YFinanceService:
             print(f"Error getting EPS and shares: {str(e)}")
             return {}
 
+    def search_tickers(self, query: str, max_results: int = 10) -> List[Dict]:
+        """
+        Search for tickers by company name or symbol using Yahoo Finance autocomplete API.
+
+        Returns list of {symbol, name, exchange, quote_type}.
+        """
+        try:
+            url = "https://query2.finance.yahoo.com/v1/finance/search"
+            params = {
+                "q": query,
+                "quotesCount": max_results,
+                "newsCount": 0,
+                "listsCount": 0,
+            }
+            resp = requests.get(url, params=params, headers=HEADERS, timeout=5)
+            resp.raise_for_status()
+            data = resp.json()
+
+            results = []
+            for quote in data.get("quotes", []):
+                results.append({
+                    "symbol": quote.get("symbol", ""),
+                    "name": quote.get("longname") or quote.get("shortname", ""),
+                    "exchange": quote.get("exchDisp", quote.get("exchange", "")),
+                    "quote_type": quote.get("quoteType", ""),
+                })
+            return results
+
+        except Exception as e:
+            print(f"Error searching tickers: {str(e)}")
+            return []
+
+    def get_etf_holdings(self, ticker: str) -> List[Dict]:
+        """
+        Get top holdings for an ETF using yfinance funds_data.
+
+        Returns list of {symbol, name, weight}.
+        """
+        try:
+            ticker_obj = yf.Ticker(ticker.upper())
+            funds_data = ticker_obj.funds_data
+            top_holdings = funds_data.top_holdings
+
+            results = []
+            if top_holdings is not None and not top_holdings.empty:
+                for symbol, row in top_holdings.iterrows():
+                    results.append({
+                        "symbol": str(symbol),
+                        "name": row.get("Name", str(symbol)),
+                        "weight": round(float(row.get("Holding Percent", 0)) * 100, 2),
+                    })
+            return results[:10]
+
+        except Exception as e:
+            print(f"Error getting ETF holdings for {ticker}: {str(e)}")
+            return []
+
+    def get_etf_info(self, ticker: str) -> Dict:
+        """Get ETF-specific information: name, category, expense ratio, total assets."""
+        try:
+            ticker_obj = yf.Ticker(ticker.upper())
+            info = ticker_obj.info
+
+            return {
+                "name": info.get("longName") or info.get("shortName", ticker.upper()),
+                "category": info.get("category", "N/A"),
+                "expense_ratio": info.get("annualReportExpenseRatio"),
+                "total_assets": info.get("totalAssets"),
+            }
+
+        except Exception as e:
+            print(f"Error getting ETF info for {ticker}: {str(e)}")
+            return {"name": ticker.upper(), "category": "N/A", "expense_ratio": None, "total_assets": None}
+
     def get_stock_info(self, ticker: str) -> Dict:
         """Get comprehensive stock information."""
         try:

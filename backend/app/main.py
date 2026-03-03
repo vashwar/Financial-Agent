@@ -9,7 +9,7 @@ load_dotenv()
 
 # Create FastAPI app
 app = FastAPI(
-    title="Deterministic Strategic Analysis Engine",
+    title="VibeFinQuant",
     description="Financial analysis tool combining quantitative analysis with LLM insights",
     version="1.0.0"
 )
@@ -37,7 +37,7 @@ async def health_check():
 async def root():
     """Root endpoint."""
     return {
-        "name": "Deterministic Strategic Analysis Engine (DSAE)",
+        "name": "VibeFinQuant",
         "version": "1.0.0",
         "endpoints": {
             "health": "/health",

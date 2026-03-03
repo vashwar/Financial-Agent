@@ -76,3 +76,38 @@ class ProcessTranscriptRequest(BaseModel):
 class ProcessTranscriptResponse(BaseModel):
     success: bool
     synthesis: LLMSynthesis
+
+
+# --- Search schemas ---
+
+class SearchSuggestion(BaseModel):
+    symbol: str
+    name: str
+    exchange: str
+    quote_type: str
+
+
+class SearchResponse(BaseModel):
+    query: str
+    suggestions: List[SearchSuggestion]
+
+
+# --- ETF schemas ---
+
+class ETFHolding(BaseModel):
+    symbol: str
+    name: str
+    weight: float
+
+
+class ETFAnalyzeRequest(BaseModel):
+    ticker: str
+
+
+class ETFAnalyzeResponse(BaseModel):
+    ticker: str
+    name: str
+    price_chart_data: List[PricePoint]
+    comparison_chart_data: List[ComparisonDataPoint]
+    holdings: List[ETFHolding]
+    summary: str

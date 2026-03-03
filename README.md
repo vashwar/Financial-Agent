@@ -1,6 +1,6 @@
-# Deterministic Strategic Analysis Engine (DSAE)
+# VibeFinQuant
 
-A full-stack financial analysis tool that combines quantitative stock analysis with AI-powered earnings call insights. Enter a stock ticker and get 5-year price history, S&P 500 comparison, 10+ financial metrics, and an AI-generated earnings call synthesis.
+A full-stack financial analysis tool that combines quantitative stock and ETF analysis with AI-powered insights. Search by company name or ticker, toggle between Stock and ETF modes, and get 5-year price history, S&P 500 comparison, financial metrics, holdings data, and AI-generated analysis.
 
 ## Tech Stack
 
@@ -9,11 +9,15 @@ A full-stack financial analysis tool that combines quantitative stock analysis w
 
 ## Features
 
-- **5-Year Price Chart** - Historical daily stock prices
+- **Company Name Search** - Typeahead dropdown that searches Yahoo Finance as you type (works with tickers and company names)
+- **Stock / ETF Toggle** - Switch between Stock and ETF analysis modes
+- **5-Year Price Chart** - Historical daily prices
 - **S&P 500 Comparison** - Normalized performance comparison (Day 1 = 0%)
-- **Financial Metrics** - Net Income, EBIT, EBITDA, FCF, Gross Margin, Operating Margin, D/E Ratio, Interest Coverage, ROIC, P/E Ratio
-- **AI Earnings Synthesis** - 8-section structured analysis powered by Google Gemini
-- **Transcript Input** - Upload a .txt transcript file or paste a YouTube earnings call link
+- **Financial Metrics** (Stock mode) - Net Income, EBIT, EBITDA, FCF, Gross Margin, Operating Margin, D/E Ratio, Interest Coverage, ROIC, P/E Ratio
+- **Top 10 Holdings** (ETF mode) - Table showing the ETF's top holdings with weights
+- **AI Insight** (ETF mode) - Single-paragraph summary of what the ETF is known for and what index it tracks
+- **AI Earnings Synthesis** (Stock mode) - 8-section structured analysis powered by Google Gemini
+- **Transcript Input** (Stock mode) - Upload a .txt transcript file or paste a YouTube earnings call link
 - **Process Transcript** - Independently analyze a transcript via Gemini AI without running full stock analysis
 
 ## Project Structure
@@ -26,7 +30,7 @@ FinancialAgent/
 │   │   ├── api/routes.py            # API endpoints
 │   │   ├── models/schemas.py        # Pydantic models
 │   │   └── services/
-│   │       ├── yfinance_service.py  # Stock data (yfinance)
+│   │       ├── yfinance_service.py  # Stock/ETF data (yfinance)
 │   │       ├── analytics.py         # Deterministic calculations
 │   │       ├── llm_service.py       # Gemini integration
 │   │       └── transcript_service.py # YouTube & file transcripts
@@ -37,10 +41,11 @@ FinancialAgent/
 │   ├── src/
 │   │   ├── App.jsx
 │   │   ├── components/
-│   │   │   ├── SearchBar.jsx
+│   │   │   ├── SearchBar.jsx        # Typeahead search + Stock/ETF toggle
 │   │   │   ├── PriceChart.jsx
 │   │   │   ├── ComparisonChart.jsx
 │   │   │   ├── MetricsTable.jsx
+│   │   │   ├── HoldingsTable.jsx    # ETF top 10 holdings
 │   │   │   ├── LLMSynthesis.jsx
 │   │   │   └── TranscriptInput.jsx
 │   │   └── services/api.js
@@ -108,13 +113,32 @@ npm run dev
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `GET` | `/api/search?q=<query>` | Search tickers by company name or symbol |
 | `POST` | `/api/analyze` | Analyze a stock ticker |
+| `POST` | `/api/analyze-etf` | Analyze an ETF ticker |
 | `POST` | `/api/transcript/upload` | Upload transcript file |
 | `POST` | `/api/transcript/youtube` | Extract YouTube transcript |
 | `POST` | `/api/process-transcript` | Process transcript with AI independently |
 | `GET` | `/health` | Health check |
 
-### Analyze Request
+### Search Request
+
+```
+GET /api/search?q=apple
+```
+
+### Search Response
+
+```json
+{
+  "query": "apple",
+  "suggestions": [
+    {"symbol": "AAPL", "name": "Apple Inc.", "exchange": "NASDAQ", "quote_type": "EQUITY"}
+  ]
+}
+```
+
+### Analyze Stock Request
 
 ```json
 POST /api/analyze
@@ -124,57 +148,39 @@ POST /api/analyze
 }
 ```
 
-### Analyze Response
+### Analyze ETF Request
 
 ```json
+POST /api/analyze-etf
 {
-  "ticker": "AAPL",
-  "price_chart_data": [
-    {"date": "2024-01-02", "close": 185.64}
-  ],
-  "comparison_chart_data": [
-    {"date": "2024-01-02", "stock_change": 0.0, "sp500_change": 0.0}
-  ],
-  "metrics": {
-    "latest_net_income": 99803000000,
-    "latest_ebit": 130000000000,
-    "latest_gross_margin": 0.4619,
-    "latest_operating_margin": 0.35,
-    "latest_debt_to_equity": 1.2,
-    "latest_interest_coverage": 32.9,
-    "latest_roic": 0.28,
-    "latest_pe_ratio": 33.5
-  },
-  "llm_synthesis": {
-    "quarterly_performance": "...",
-    "forward_guidance": "...",
-    "challenges": "...",
-    "positive_signs": "...",
-    "analyst_qa_focus": "...",
-    "strategic_initiatives": "...",
-    "management_tone": "...",
-    "conclusion": "..."
-  }
+  "ticker": "SPY"
 }
 ```
 
-### YouTube Transcript Request
+### Analyze ETF Response
 
 ```json
-POST /api/transcript/youtube
 {
-  "youtube_url": "https://www.youtube.com/watch?v=VIDEO_ID"
+  "ticker": "SPY",
+  "name": "State Street SPDR S&P 500 ETF Trust",
+  "price_chart_data": [...],
+  "comparison_chart_data": [...],
+  "holdings": [
+    {"symbol": "NVDA", "name": "NVIDIA Corp", "weight": 7.83}
+  ],
+  "summary": "SPY tracks the S&P 500 index and is the largest ETF by AUM..."
 }
 ```
 
 ## How It Works
 
-1. **Data Ingestion** - Fetches 5 years of daily prices and quarterly fundamentals via yfinance
-2. **Calculations** - All metrics computed deterministically with Pandas/NumPy (no randomness)
-3. **Transcript** - User provides an earnings call transcript via file upload or YouTube link
-4. **AI Analysis** - Google Gemini generates an 8-section structured synthesis combining the transcript with calculated metrics
+1. **Search** - Typeahead queries Yahoo Finance autocomplete API as you type
+2. **Data Ingestion** - Fetches 5 years of daily prices via yfinance; for stocks also fetches quarterly fundamentals
+3. **Calculations** - All metrics computed deterministically with Pandas/NumPy (no randomness)
+4. **ETF Holdings** - For ETFs, retrieves top 10 holdings with weights from yfinance funds data
+5. **AI Analysis** - Google Gemini generates either an 8-section earnings synthesis (stocks) or a single-paragraph ETF summary
 
-### Financial Metrics
+### Financial Metrics (Stock mode)
 
 | Metric | Formula |
 |--------|---------|
@@ -185,7 +191,7 @@ POST /api/transcript/youtube
 | ROIC | EBIT / (Total Debt + Total Equity) |
 | P/E Ratio | Current Price / Trailing EPS |
 
-### AI Synthesis Sections
+### AI Synthesis Sections (Stock mode)
 
 1. Quarterly Performance
 2. Forward Guidance
@@ -198,7 +204,7 @@ POST /api/transcript/youtube
 
 ## Data Sources
 
-- **Stock Data**: Yahoo Finance via yfinance (no API key required)
+- **Stock & ETF Data**: Yahoo Finance via yfinance (no API key required)
 - **Earnings Transcripts**: YouTube (via yt-dlp) or file upload
 - **LLM Analysis**: Google Gemini AI
 

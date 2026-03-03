@@ -63,6 +63,32 @@ Format your response as JSON with keys: quarterly_performance, forward_guidance,
             print(f"LLM Service Error: {str(e)}")
             return self._default_synthesis()
 
+    def summarize_etf(self, ticker: str, holdings: list, etf_info: Dict[str, Any]) -> str:
+        """
+        Generate a single-paragraph AI summary for an ETF.
+
+        Returns a plain string describing what the ETF is known for
+        and whether it tracks a specific index.
+        """
+        holdings_str = ", ".join(
+            f"{h['symbol']} ({h['weight']}%)"
+            for h in holdings[:5]
+        ) or "N/A"
+
+        prompt = f"""Write a single concise paragraph (3-5 sentences) about the ETF "{ticker}" ({etf_info.get('name', ticker)}).
+
+Category: {etf_info.get('category', 'N/A')}
+Top holdings: {holdings_str}
+
+Explain what this ETF is known for, what index it tracks (if any), and its general investment strategy. Keep it simple and informative. Return ONLY the paragraph text, no headings or formatting."""
+
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text.strip()
+        except Exception as e:
+            print(f"LLM ETF Service Error: {str(e)}")
+            return f"Summary unavailable for {ticker}."
+
     @staticmethod
     def _format_metrics(metrics: Dict[str, Any]) -> str:
         """Format metrics dictionary for prompt injection."""

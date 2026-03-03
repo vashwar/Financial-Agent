@@ -1,5 +1,5 @@
 #!/bin/bash
-# DSAE - Setup Script
+# VibeFinQuant - Setup Script
 # Installs all dependencies for backend and frontend
 
 set -e
@@ -7,7 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "=============================="
-echo "  DSAE Setup"
+echo "  VibeFinQuant Setup"
 echo "=============================="
 
 # --- Backend ---

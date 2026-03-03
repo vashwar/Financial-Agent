@@ -1,0 +1,5 @@
+App name: VibeFinQuant
+
+Completed features:
+1. Search by company name — typeahead dropdown queries Yahoo Finance autocomplete API (debounced 300ms, 2+ chars). Shows "AAPL — Apple Inc. (NASDAQ)" format. Click to select.
+2. ETF analysis tab — Stock/ETF toggle in SearchBar. ETF mode shows same 2 charts + top 10 holdings table + single-paragraph AI insight (no earnings transcript section in ETF mode).

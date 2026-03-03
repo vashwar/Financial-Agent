@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query
 from app.models.schemas import (
     AnalyzeRequest, AnalyzeResponse, PricePoint,
     ComparisonDataPoint, MetricsData, LLMSynthesis,
     TranscriptUploadResponse, YouTubeTranscriptRequest, YouTubeTranscriptResponse,
-    ProcessTranscriptRequest, ProcessTranscriptResponse
+    ProcessTranscriptRequest, ProcessTranscriptResponse,
+    SearchSuggestion, SearchResponse,
+    ETFHolding, ETFAnalyzeRequest, ETFAnalyzeResponse,
 )
 from app.services.yfinance_service import YFinanceService
 from app.services.analytics import AnalyticsService
@@ -127,6 +129,91 @@ async def process_transcript(request: ProcessTranscriptRequest) -> ProcessTransc
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transcript processing failed: {str(e)}")
+
+
+@router.get("/search", response_model=SearchResponse)
+async def search_tickers(q: str = Query(..., min_length=1)) -> SearchResponse:
+    """Search for tickers by company name or symbol."""
+    try:
+        yf_service = YFinanceService()
+        results = yf_service.search_tickers(q)
+        suggestions = [
+            SearchSuggestion(
+                symbol=r["symbol"],
+                name=r["name"],
+                exchange=r["exchange"],
+                quote_type=r["quote_type"],
+            )
+            for r in results
+        ]
+        return SearchResponse(query=q, suggestions=suggestions)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+@router.post("/analyze-etf", response_model=ETFAnalyzeResponse)
+async def analyze_etf(request: ETFAnalyzeRequest) -> ETFAnalyzeResponse:
+    """
+    Analyze an ETF ticker: price charts, holdings, and AI synthesis.
+    """
+    ticker = request.ticker.upper()
+
+    try:
+        yf_service = YFinanceService()
+        analytics = AnalyticsService()
+        llm = LLMService()
+
+        # 1. Price history (reuse existing logic)
+        etf_prices = yf_service.get_historical_prices(ticker)
+        sp500_prices = yf_service.get_sp500_prices()
+
+        price_metrics = analytics.calculate_price_metrics(etf_prices)
+        price_chart_data = [
+            PricePoint(date=str(row["date"].date()), close=float(row["close"]))
+            for _, row in price_metrics.iterrows()
+        ]
+
+        # 2. Normalized comparison
+        etf_normalized, sp500_normalized = analytics.calculate_normalized_comparison(
+            etf_prices, sp500_prices
+        )
+        merged_normalized = etf_normalized.merge(
+            sp500_normalized, on="date", suffixes=("_stock", "_sp500")
+        )
+        comparison_chart_data = [
+            ComparisonDataPoint(
+                date=str(row["date"].date()),
+                stock_change=float(row["percent_change_stock"]),
+                sp500_change=float(row["percent_change_sp500"]),
+            )
+            for _, row in merged_normalized.iterrows()
+        ]
+
+        # 3. ETF holdings + info
+        holdings_raw = yf_service.get_etf_holdings(ticker)
+        etf_info = yf_service.get_etf_info(ticker)
+
+        holdings = [
+            ETFHolding(symbol=h["symbol"], name=h["name"], weight=h["weight"])
+            for h in holdings_raw
+        ]
+
+        # 4. AI summary (single paragraph)
+        summary = llm.summarize_etf(ticker, holdings_raw, etf_info)
+
+        return ETFAnalyzeResponse(
+            ticker=ticker,
+            name=etf_info.get("name", ticker),
+            price_chart_data=price_chart_data,
+            comparison_chart_data=comparison_chart_data,
+            holdings=holdings,
+            summary=summary,
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"ETF analysis failed: {str(e)}")
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
