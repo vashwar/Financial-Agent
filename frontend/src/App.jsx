@@ -29,7 +29,7 @@ function App() {
       // Add a small delay to ensure state is cleared before fetching
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      const data = await analyzeStock(ticker, userTranscript)
+      const data = await analyzeStock(ticker)
       setResults(data)
     } catch (err) {
       setError(err.message || 'Failed to analyze stock. Please try again.')
