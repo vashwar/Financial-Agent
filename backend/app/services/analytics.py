@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import Dict, Tuple, Any, Optional
+from typing import Dict, List, Tuple, Any, Optional
 
 
 class AnalyticsService:
@@ -62,6 +62,69 @@ class AnalyticsService:
         )
 
         return stock_aligned[["date", "percent_change"]], sp500_aligned[["date", "percent_change"]]
+
+    @staticmethod
+    def calculate_multi_normalized_comparison(
+        price_dfs: Dict[str, pd.DataFrame]
+    ) -> List[Dict]:
+        """
+        Normalize multiple tickers to Day 1 = 0% change and align on common dates.
+
+        Args:
+            price_dfs: Dict mapping ticker -> DataFrame with [date, close]
+
+        Returns:
+            List of {date: str, values: {TICKER: float, ...}}
+        """
+        if not price_dfs:
+            return []
+
+        # Sort each DataFrame by date
+        sorted_dfs = {}
+        for ticker, df in price_dfs.items():
+            sorted_dfs[ticker] = df.sort_values("date").reset_index(drop=True)
+
+        # Find common date range
+        min_dates = [df["date"].min() for df in sorted_dfs.values()]
+        max_dates = [df["date"].max() for df in sorted_dfs.values()]
+        common_min = max(min_dates)
+        common_max = min(max_dates)
+
+        # Filter to common range and normalize each to Day 1 = 0%
+        normalized = {}
+        for ticker, df in sorted_dfs.items():
+            aligned = df[(df["date"] >= common_min) & (df["date"] <= common_max)].copy()
+            aligned = aligned.reset_index(drop=True)
+            if aligned.empty:
+                continue
+            start_price = aligned.iloc[0]["close"]
+            if start_price == 0:
+                continue
+            aligned["pct"] = (aligned["close"] - start_price) / start_price
+            # Use date as string index for joining
+            aligned["date_str"] = aligned["date"].apply(
+                lambda d: d.strftime("%Y-%m-%d") if hasattr(d, "strftime") else str(d)
+            )
+            normalized[ticker] = aligned.set_index("date_str")["pct"]
+
+        if not normalized:
+            return []
+
+        # Outer-join all series, forward-fill gaps
+        combined = pd.DataFrame(normalized)
+        combined = combined.sort_index()
+        combined = combined.ffill()
+
+        result = []
+        for date_str, row in combined.iterrows():
+            values = {}
+            for ticker in combined.columns:
+                val = row[ticker]
+                if pd.notna(val):
+                    values[ticker] = float(val)
+            result.append({"date": date_str, "values": values})
+
+        return result
 
     @staticmethod
     def calculate_fundamental_metrics(

@@ -109,6 +109,19 @@ export const analyzeETF = (ticker) => {
 }
 
 /**
+ * Compare multiple tickers with normalized returns
+ * @param {string[]} tickers - Array of ticker symbols
+ * @param {number} years - Time period (1, 2, 3, or 5)
+ * @returns {Promise} Response with comparison data
+ */
+export const compareTickers = (tickers, years) => {
+  return apiClient.post('/api/compare', { tickers, years }, {
+    timeout: 60000,
+    params: { _t: Date.now() },
+  })
+}
+
+/**
  * Check API health
  * @returns {Promise} Health status
  */

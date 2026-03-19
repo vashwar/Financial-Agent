@@ -80,7 +80,7 @@ export default function SearchBar({ onAnalyze, isLoading, analysisMode, onModeCh
           VibeFinQuant
         </h1>
 
-        {/* Stock / ETF Toggle */}
+        {/* Stock / ETF / Comparison Toggle */}
         <div className="flex gap-1 mb-4">
           <button
             type="button"
@@ -96,7 +96,7 @@ export default function SearchBar({ onAnalyze, isLoading, analysisMode, onModeCh
           <button
             type="button"
             onClick={() => onModeChange('etf')}
-            className={`px-5 py-2 rounded-r-lg font-medium text-sm transition-colors ${
+            className={`px-5 py-2 font-medium text-sm transition-colors ${
               analysisMode === 'etf'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -104,9 +104,20 @@ export default function SearchBar({ onAnalyze, isLoading, analysisMode, onModeCh
           >
             ETF
           </button>
+          <button
+            type="button"
+            onClick={() => onModeChange('comparison')}
+            className={`px-5 py-2 rounded-r-lg font-medium text-sm transition-colors ${
+              analysisMode === 'comparison'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Comparison
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex gap-3">
+        {analysisMode !== 'comparison' && <form onSubmit={handleSubmit} className="flex gap-3">
           <div className="relative flex-1" ref={dropdownRef}>
             <input
               ref={inputRef}
@@ -146,7 +157,7 @@ export default function SearchBar({ onAnalyze, isLoading, analysisMode, onModeCh
           >
             {isLoading ? 'Analyzing...' : 'Analyze'}
           </button>
-        </form>
+        </form>}
 
         {error && (
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">

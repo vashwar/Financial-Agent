@@ -6,6 +6,7 @@ from app.models.schemas import (
     ProcessTranscriptRequest, ProcessTranscriptResponse,
     SearchSuggestion, SearchResponse,
     ETFHolding, ETFAnalyzeRequest, ETFAnalyzeResponse,
+    CompareRequest, CompareSeriesPoint, CompareResponse,
 )
 from app.services.yfinance_service import YFinanceService
 from app.services.analytics import AnalyticsService
@@ -327,3 +328,46 @@ async def analyze_stock(request: AnalyzeRequest) -> AnalyzeResponse:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+@router.post("/compare", response_model=CompareResponse)
+async def compare_tickers(request: CompareRequest) -> CompareResponse:
+    """
+    Compare multiple tickers with normalized returns over a given period.
+    Automatically includes SPY as S&P 500 baseline.
+    """
+    try:
+        yf_service = YFinanceService()
+        analytics = AnalyticsService()
+
+        # Deduplicate and auto-add SPY
+        tickers = list(dict.fromkeys(request.tickers))  # preserve order, remove dupes
+        if "SPY" not in tickers:
+            tickers.append("SPY")
+
+        # Fetch price data for each ticker, skip failures
+        price_dfs = {}
+        for ticker in tickers:
+            try:
+                df = yf_service.get_historical_prices(ticker, years=request.years)
+                if not df.empty:
+                    price_dfs[ticker] = df
+            except Exception:
+                continue
+
+        if len(price_dfs) < 2:
+            raise ValueError("Could not fetch data for enough tickers to compare")
+
+        # Calculate multi-normalized comparison
+        data = analytics.calculate_multi_normalized_comparison(price_dfs)
+
+        return CompareResponse(
+            tickers=list(price_dfs.keys()),
+            years=request.years,
+            data=[CompareSeriesPoint(date=d["date"], values=d["values"]) for d in data],
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Comparison failed: {str(e)}")

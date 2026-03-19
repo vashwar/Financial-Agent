@@ -6,7 +6,9 @@ import ComparisonChart from './components/ComparisonChart'
 import MetricsTable from './components/MetricsTable'
 import HoldingsTable from './components/HoldingsTable'
 import LLMSynthesis from './components/LLMSynthesis'
-import { analyzeStock, analyzeETF, processTranscript } from './services/api'
+import MultiTickerSearch from './components/MultiTickerSearch'
+import MultiComparisonChart from './components/MultiComparisonChart'
+import { analyzeStock, analyzeETF, processTranscript, compareTickers } from './services/api'
 
 function App() {
   const [isLoading, setIsLoading] = useState(false)
@@ -19,11 +21,13 @@ function App() {
   const [transcriptSynthesis, setTranscriptSynthesis] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [processError, setProcessError] = useState('')
+  const [compareResults, setCompareResults] = useState(null)
 
   const handleModeChange = (mode) => {
     setAnalysisMode(mode)
     setResults(null)
     setEtfResults(null)
+    setCompareResults(null)
     setError('')
   }
 
@@ -75,6 +79,21 @@ function App() {
     }
   }
 
+  const handleCompare = async (tickers, years) => {
+    setIsLoading(true)
+    setError('')
+    setCompareResults(null)
+
+    try {
+      const data = await compareTickers(tickers, years)
+      setCompareResults(data)
+    } catch (err) {
+      setError(err.message || 'Failed to compare tickers. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <SearchBar
@@ -83,6 +102,11 @@ function App() {
         analysisMode={analysisMode}
         onModeChange={handleModeChange}
       />
+
+      {/* Comparison mode: multi-ticker search */}
+      {analysisMode === 'comparison' && (
+        <MultiTickerSearch onCompare={handleCompare} isLoading={isLoading} />
+      )}
 
       {/* Analysis error */}
       {error && (
@@ -158,8 +182,19 @@ function App() {
         </div>
       )}
 
+      {/* Comparison results */}
+      {compareResults && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <MultiComparisonChart
+            data={compareResults.data}
+            tickers={compareResults.tickers}
+            years={compareResults.years}
+          />
+        </div>
+      )}
+
       {/* Transcript section — only in stock mode */}
-      {analysisMode !== 'etf' && (
+      {analysisMode === 'stock' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
           {!results && !error && !isLoading && (
             <div className="text-center text-gray-600 mb-8">
@@ -192,6 +227,18 @@ function App() {
               subtitle="Independent AI-powered analysis of the uploaded transcript"
             />
           )}
+        </div>
+      )}
+
+      {/* Empty state for comparison mode */}
+      {analysisMode === 'comparison' && !compareResults && !error && !isLoading && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center text-gray-600">
+            <p className="text-lg mb-4">Add tickers above to compare normalized returns</p>
+            <p className="text-sm text-gray-500">
+              Select multiple stocks or ETFs and see how their returns compare over time, with S&P 500 as a baseline.
+            </p>
+          </div>
         </div>
       )}
 

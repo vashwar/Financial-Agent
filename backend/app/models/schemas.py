@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from pydantic import BaseModel, field_validator
+from typing import List, Dict, Any, Optional, Literal
 
 
 class AnalyzeRequest(BaseModel):
@@ -111,3 +111,28 @@ class ETFAnalyzeResponse(BaseModel):
     comparison_chart_data: List[ComparisonDataPoint]
     holdings: List[ETFHolding]
     summary: str
+
+
+# --- Comparison schemas ---
+
+class CompareRequest(BaseModel):
+    tickers: List[str]
+    years: Literal[1, 2, 3, 5] = 5
+
+    @field_validator("tickers")
+    @classmethod
+    def validate_tickers(cls, v):
+        if len(v) < 1 or len(v) > 10:
+            raise ValueError("Must provide between 1 and 10 tickers")
+        return [t.upper() for t in v]
+
+
+class CompareSeriesPoint(BaseModel):
+    date: str
+    values: Dict[str, float]
+
+
+class CompareResponse(BaseModel):
+    tickers: List[str]
+    years: int
+    data: List[CompareSeriesPoint]
